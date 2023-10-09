@@ -1,0 +1,46 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+#D = np.array([2,2.5,3,3.5,4,4.5,5,5.5,6])
+#Vp = np.array([2.1,2.2,2.3,2.4,2.4,2.5,2.6,2.6,2.7])
+data = np.loadtxt('data.txt', delimiter='\t', skiprows=1)
+
+Vp = data[:, 0]
+D = data[:, 1]
+G = np.zeros((len(D),2))
+
+for i in range(len(D)):
+    G[i,:] = ([1,Vp[i]])
+
+G0 = np.transpose(G).dot(G)
+Ginv = np.linalg.inv(G0)
+G1 = np.matmul(Ginv,np.transpose(G))
+m = np.matmul(G1,D)
+print(G.shape)
+print(Ginv.shape)
+print(m)
+
+Dx = G.dot(m)
+
+mref = np.array([[1],[2]])
+Dt = G.dot(mref)
+plt.figure()
+
+plt.scatter(Vp,D,label = "Observed Data",marker='o', s=20)
+plt.plot(Vp,Dx,label = "Calculated Data")
+plt.plot(Vp,Dt,label = "Ref Data")
+
+E = 0
+for i in range(len(D)):
+    E = E + np.sqrt((D[i]-Dx[i])**2/len(D))
+
+data_raw = np.column_stack((Vp, D))
+formatted_data = np.around(data_raw, 3)
+np.savetxt('datax.txt', formatted_data, delimiter='\t', header='x\t  y', comments='', fmt='%.{}f'.format(3))
+
+plt.text(2.35,2,f"Misfit: {E}", fontsize=10, color='blue')
+plt.xlabel("Vp")
+plt.ylabel("D")
+plt.legend()
+plt.show()
+
