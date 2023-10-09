@@ -1,0 +1,106 @@
+#Muhammad Arvito Naufal 12320026
+#Inversi Geofisika
+
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.widgets import Button
+
+ax = plt.figure().add_subplot(projection='3d')
+bx = plt.figure().add_subplot(projection='3d')
+
+x = np.array(range(-100,100,5))
+y = np.array(range(-100,100,5))
+A = 1
+B = 0.8
+C = 0.1
+D = 0.015
+E = 0.0001
+length = len(x)*len(y)
+
+X, Y = np.meshgrid(x, y)
+
+z = A + B*x + C*(y*2) + D*(x**3) + E*(y**4)
+
+
+rng = np.random.default_rng()
+
+m = np.array([[A],[B],[C],[D],[E]])
+G = np.zeros((len(x)*len(y),5))
+
+X1 = X.flatten()
+Y1 = Y.flatten()
+
+for i in range(len(x)*len(y)):
+    G[i,:] = ([1,Y1[i],X1[i]**2,Y1[i]**3,X1[i]**4])
+
+d = G.dot(m)
+dn = np.transpose(d) + 1000*rng.normal(size=len(x)*len(y))
+dx = dn.reshape(len(x),len(y))
+dy = np.transpose(dx)
+surf = ax.plot_surface(X, Y, dy, cmap=cm.rainbow,linewidth=0, antialiased=False)
+
+def save_data_to_txt(event):
+    data = np.column_stack((x, y, dy))
+    np.savetxt('data.txt', data, fmt='%f', delimiter='\t', header='X\tY\tZ', comments='')
+
+ax_save_button = plt.axes([0.8, 0.01, 0.1, 0.05])
+save_button = Button(ax_save_button, 'Save Data')
+save_button.on_clicked(save_data_to_txt)
+
+def inverse_matrix(matrix):
+    try:
+        # Attempt to compute the inverse using numpy's `linalg.inv` function
+        inv_matrix = np.linalg.inv(matrix)
+        return inv_matrix
+    except np.linalg.LinAlgError:
+        # If the matrix is singular (non-invertible), handle the exception
+        return None
+
+std_deviation_d = np.std(d) * np.ones_like(d)
+d2 = std_deviation_d**(-2)
+
+# Create an identity matrix of size 200x200
+W = np.identity(1600)
+
+# Replace the diagonal of the identity matrix with the values of matrix A
+for i in range(length):
+    W[i, i] = d2[i % length, i // length]
+
+
+G1 = np.transpose(G).dot(W)
+G2 = G1.dot(G)
+result = inverse_matrix(G2)
+
+""""if result is not None:
+    print("Original Matrix:")
+    print(dy)
+    print("Inverse Matrix:")
+    print(result)
+else:
+    print("The matrix is singular and cannot be inverted.")"""
+
+G4 = result.dot(np.transpose(G))
+G5 = G4.dot(W)
+
+m2 = G5.dot(np.transpose(dn))
+decal = G.dot(m2)
+decal2 = decal.reshape(len(x),len(y))
+decal3 = np.transpose(decal2)
+
+print("Real Model")
+print(np.shape(G5))
+print("======")
+print("Estimated Model")
+print(np.shape(np.transpose(dn)))
+
+surf = ax.plot_surface(X, Y, decal3, cmap=cm.coolwarm,linewidth=0, antialiased=False)
+
+ax.legend()
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Z')
+
+plt.show()
