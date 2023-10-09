@@ -91,10 +91,10 @@ decal2 = decal.reshape(len(x),len(y))
 decal3 = np.transpose(decal2)
 
 print("Real Model")
-print(np.shape(G5))
+print(m)
 print("======")
 print("Estimated Model")
-print(np.shape(np.transpose(dn)))
+print(m2)
 
 surf = ax.plot_surface(X, Y, decal3, cmap=cm.coolwarm,linewidth=0, antialiased=False)
 
