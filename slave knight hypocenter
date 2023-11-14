@@ -1,0 +1,101 @@
+#12320026 Muhammad Arvito Naufal
+#Non Linear Inversion - Hypocenter Determination
+import numpy as np
+import matplotlib.pyplot as plt
+
+#Receiver Locations
+x = [20,50,40,10,60,75,94,82,13,101]
+y = [10,25,50,40,72,14,32,55,63,100]
+z = [1,1.5,0,0.8,1,1.7,1.8,0.4,0,1.1]
+
+#Wave Velocity
+vp = 4
+
+#Real Hypocenter of Earthquake Coordinate
+xp = 40
+yp = 30
+zp = 50
+
+#Empty Matrix Setuo
+xm = np.zeros((len(x),1))
+ym = np.zeros((len(x),1))
+zm = np.zeros((len(x),1))
+
+#Random value setup
+rng = np.random.default_rng()
+
+#Initial Guess of the Hypocenter
+xm[0] = 60
+ym[0] = 25
+zm[0] = 35
+
+#Forward Modeling for the Data
+Treal = np.zeros((len(x),1))
+for i in range(len(x)):
+    Treal[i,:] = ((np.sqrt((xp-x[i])**2+(yp-y[i])**2+(zp-z[i])**2))/vp)
+
+#Applying random generated noise to data
+T_obs = Treal + 1.3*rng.normal(size=1)
+
+#Jacobian Setup
+jack = np.ones((len(x), 3))
+def jacobian(i):
+    for j in range(len(x)):
+        jack[j,0] = (xm[i]-x[j])/(vp*(np.sqrt((xm[i]-x[j])**2+(ym[i]-y[j])**2+(zm[i]-z[j])**2)))
+        jack[j,1] = (ym[i]-y[j])/(vp*(np.sqrt((xm[i]-x[j])**2+(ym[i]-y[j])**2+(zm[i]-z[j])**2)))
+        jack[j,2] = (zm[i] - z[j]) / (vp * (np.sqrt((xm[i] - x[j]) ** 2 + (ym[i] - y[j]) ** 2 + (zm[i] - z[j]) ** 2)))
+    JT = np.dot(np.transpose(jack),jack)
+    Jinv = np.linalg.inv(JT)
+    Jfin = np.dot(Jinv,np.transpose(jack))
+    return Jfin
+
+#Delta Value Setup
+delta = np.zeros((len(x),1))
+
+def delta_d(i):
+    for t in range(len(x)):
+        delta[t,:] = T_obs[t] - ((np.sqrt((xm[i]-x[t])**2+(ym[i]-y[t])**2+(zm[i]-z[t])**2))/vp)
+    return delta
+
+#Hypocenter Coordinate Iteration Setup
+for i in range(len(x)-1):
+    xm[i+1] = xm[i] + np.dot(jacobian(i),delta_d(i))[0]
+    ym[i+1] = ym[i] + np.dot(jacobian(i), delta_d(i))[1]
+    zm[i + 1] = zm[i] + np.dot(jacobian(i), delta_d(i))[2]
+
+#Error Value Calculator
+rms = np.zeros((len(x),1))
+for i in range(len(x)):
+    rms[i] = np.sqrt(np.mean(np.abs(delta_d(i))))
+
+print(xm,ym,zm)
+
+#Plotting RMS Error Value
+iteration = [1,2,3,4,5,6,7,8,9,10]
+plt.figure(1)
+plt.plot(iteration, rms, label='rms', color='blue')
+plt.xlabel('Iterasi')
+plt.ylabel('rms')
+plt.title('Plot of rms and iteration')
+plt.legend()
+
+#3D Plotting the Calculated Hypocenter Coordinates"
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.set_xlim(0, 100)
+ax.set_ylim(0, 100)
+ax.set_ylim(0, 100)
+ax.scatter(x,y,z,label='Seismometer')
+ax.scatter(xm,ym,zm,color='y',marker='*',label='Calculated Source')
+ax.scatter(xp,yp,zp,color='r',label='Real Source',marker='*')
+ax.set_title('3D Earthquake Hypocenter Plotting')
+ax.set_xlabel('x (km)')
+ax.set_ylabel('y (km)')
+ax.set_zlabel('z (km)')
+ax.legend()
+plt.gca().invert_zaxis()
+
+# Show the plot
+plt.grid()
+plt.show()
+
